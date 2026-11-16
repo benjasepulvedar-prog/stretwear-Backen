@@ -40,7 +40,9 @@ Para iniciar sesión se usa `POST /api/auth/login`. Hay que copiar el token que 
 
 Por ahora los datos se guardan en memoria. Al apagar el backend se pierden los usuarios creados, productos y pedidos.
 
-JPA y H2 siguen en las dependencias, pero su inicio automático está desactivado. Todavía no se conecta a una base de datos.
+Están incluidas las dependencias de Spring Initializr: Spring Data JPA, Spring Security, Lombok, Spring Web, Flyway Migration y SpringDoc OpenAPI. También se conserva H2.
+
+JPA, H2 y Flyway tienen su inicio desactivado. Todavía no se conecta a una base de datos ni se ejecutan migraciones.
 
 ## Pruebas
 
