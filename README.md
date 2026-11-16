@@ -50,6 +50,3 @@ Desde la carpeta streetwear-backend:
 .\mvnw.cmd test
 ```
 
-La última ejecución pasó las 19 pruebas de usuarios, productos, pedidos, permisos y JWT.
-
-El frontend está en otro repositorio y su conexión con esta API sigue pendiente.
