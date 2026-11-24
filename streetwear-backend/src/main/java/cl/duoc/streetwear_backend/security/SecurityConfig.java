@@ -2,6 +2,7 @@ package cl.duoc.streetwear_backend.security;
 
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 import javax.crypto.KeyGenerator;
@@ -31,6 +32,8 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
@@ -40,6 +43,7 @@ public class SecurityConfig {
         return http
                 // La API usa JWT en el encabezado, sin sesiones ni cookies de autenticación.
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(catalogCors()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
@@ -54,6 +58,17 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
                 .build();
+    }
+
+    private UrlBasedCorsConfigurationSource catalogCors() {
+        var config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of("http://localhost:5173", "http://127.0.0.1:5173"));
+        config.setAllowedMethods(List.of(HttpMethod.GET.name()));
+
+        var source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/products", config);
+        source.registerCorsConfiguration("/products/*", config);
+        return source;
     }
 
     private JwtAuthenticationConverter jwtAuthenticationConverter() {

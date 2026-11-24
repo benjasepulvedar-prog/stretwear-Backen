@@ -75,6 +75,23 @@ class StoreApiTests {
     }
 
     @Test
+    void catalogCorsAllowsViteAndRejectsOtherOrigins() throws Exception {
+        var uri = URI.create("http://localhost:" + port + "/products");
+        for (var origin : List.of("http://localhost:5173", "http://127.0.0.1:5173")) {
+            var request = HttpRequest.newBuilder(uri).header("Origin", origin).GET().build();
+            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, response.statusCode(), response.body());
+            assertEquals(origin, response.headers().firstValue("Access-Control-Allow-Origin").orElseThrow());
+        }
+
+        var foreignRequest = HttpRequest.newBuilder(uri)
+                .header("Origin", "https://example.com").GET().build();
+        var rejected = client.send(foreignRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(403, rejected.statusCode());
+        assertTrue(rejected.headers().firstValue("Access-Control-Allow-Origin").isEmpty());
+    }
+
+    @Test
     void publicRegistrationAndProfileUpdateCannotGrantAdminRole() throws Exception {
         var response = send("POST", "/api/auth/register", Map.of(
                 "name", "Nuevo", "email", "nuevo@example.com", "password", PASSWORD, "role", "admin"), null);
