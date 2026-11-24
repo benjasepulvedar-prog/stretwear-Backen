@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -31,7 +32,7 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El correo ya está registrado");
         }
         User user = new User(request.name().trim(), email, hashPassword(request.password()));
-        return UserResponse.from(repository.save(user));
+        return save(user);
     }
 
     public synchronized User authenticate(LoginRequest request) {
@@ -58,7 +59,15 @@ public class UserService {
         user.setName(request.name().trim());
         user.setEmail(email);
         user.setPasswordHash(hashPassword(request.password()));
-        return UserResponse.from(repository.save(user));
+        return save(user);
+    }
+
+    private UserResponse save(User user) {
+        try {
+            return UserResponse.from(repository.save(user));
+        } catch (DataIntegrityViolationException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El correo ya está registrado", exception);
+        }
     }
 
     public synchronized void deleteCurrentUser(Long id) {

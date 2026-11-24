@@ -1,44 +1,16 @@
 package cl.duoc.streetwear_backend.repositories;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 import cl.duoc.streetwear_backend.models.Product;
 
-@Repository
-public class ProductRepository {
+public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    private final Map<Long, Product> products = new LinkedHashMap<>();
-    private long nextId = 1;
-
-    public synchronized List<Product> findAll() {
-        return new ArrayList<>(products.values());
-    }
-
-    public synchronized Optional<Product> findById(Long id) {
-        return Optional.ofNullable(products.get(id));
-    }
-
-    public synchronized Product save(Product product) {
-        if (product.getId() == null) {
-            product.setId(nextId++);
-        }
-        products.put(product.getId(), product);
-        return product;
-    }
-
-    public synchronized void delete(Product product) {
-        products.remove(product.getId());
-    }
-
-    public synchronized long count() {
-        return products.size();
-    }
-
-    public synchronized void deleteAll() {
-        products.clear();
-    }
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where p.id = :id")
+    Optional<Product> findByIdForUpdate(@Param("id") Long id);
 }

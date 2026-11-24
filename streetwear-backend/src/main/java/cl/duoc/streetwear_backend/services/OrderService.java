@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import cl.duoc.streetwear_backend.dto.OrderItemRequest;
 import cl.duoc.streetwear_backend.dto.OrderRequest;
@@ -25,48 +26,54 @@ public class OrderService {
     private final OrderRepository orders;
     private final ProductRepository products;
     private final UserRepository users;
+    private final TransactionTemplate transaction;
 
-    public OrderService(OrderRepository orders, ProductRepository products, UserRepository users) {
+    public OrderService(OrderRepository orders, ProductRepository products, UserRepository users,
+            TransactionTemplate transaction) {
         this.orders = orders;
         this.products = products;
         this.users = users;
+        this.transaction = transaction;
     }
 
     public PurchaseOrder create(Long buyerId, OrderRequest request) {
-        synchronized (products) {
-            User buyer = users.findById(buyerId).orElseThrow(
-                    () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "La cuenta ya no existe"));
-            PurchaseOrder order = new PurchaseOrder(
-                    buyer, request.name().trim(), request.address().trim(), request.delivery());
-            BigDecimal total = BigDecimal.ZERO;
-            Set<Long> seen = new HashSet<>();
-            List<Product> selected = new ArrayList<>();
-            List<OrderItemRequest> lines = request.items().stream()
-                    .sorted(Comparator.comparing(OrderItemRequest::productId)).toList();
+        PurchaseOrder order = transaction.execute(status -> reserveStock(buyerId, request));
+        return orders.save(order);
+    }
 
-            // Se valida el pedido completo antes de cambiar cualquier stock.
-            for (OrderItemRequest line : lines) {
-                if (!seen.add(line.productId())) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No repitas productos en el pedido");
-                }
-                Product product = products.findById(line.productId()).orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
-                if (product.getStock() < line.quantity()) {
-                    throw new ResponseStatusException(
-                            HttpStatus.CONFLICT, "Stock insuficiente para " + product.getName());
-                }
-                selected.add(product);
-                order.getItems().add(new OrderItem(product, line.quantity()));
-                total = total.add(product.getPrice().multiply(BigDecimal.valueOf(line.quantity())));
-            }
+    private PurchaseOrder reserveStock(Long buyerId, OrderRequest request) {
+        User buyer = users.findById(buyerId).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "La cuenta ya no existe"));
+        PurchaseOrder order = new PurchaseOrder(
+                buyer, request.name().trim(), request.address().trim(), request.delivery());
+        BigDecimal total = BigDecimal.ZERO;
+        Set<Long> seen = new HashSet<>();
+        List<Product> selected = new ArrayList<>();
+        List<OrderItemRequest> lines = request.items().stream()
+                .sorted(Comparator.comparing(OrderItemRequest::productId)).toList();
 
-            for (int i = 0; i < selected.size(); i++) {
-                Product product = selected.get(i);
-                product.setStock(product.getStock() - lines.get(i).quantity());
+        // Se valida el pedido completo antes de cambiar cualquier stock.
+        for (OrderItemRequest line : lines) {
+            if (!seen.add(line.productId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No repitas productos en el pedido");
             }
-            order.setTotal(total);
-            return orders.save(order);
+            Product product = products.findByIdForUpdate(line.productId()).orElseThrow(
+                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
+            if (product.getStock() < line.quantity()) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "Stock insuficiente para " + product.getName());
+            }
+            selected.add(product);
+            order.getItems().add(new OrderItem(product, line.quantity()));
+            total = total.add(product.getPrice().multiply(BigDecimal.valueOf(line.quantity())));
         }
+
+        for (int i = 0; i < selected.size(); i++) {
+            Product product = selected.get(i);
+            product.setStock(product.getStock() - lines.get(i).quantity());
+        }
+        order.setTotal(total);
+        return order;
     }
 
     public List<PurchaseOrder> findAll(Long userId, String role) {

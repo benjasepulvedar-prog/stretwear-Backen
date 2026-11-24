@@ -11,6 +11,7 @@ import javax.crypto.SecretKey;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -43,7 +44,7 @@ public class SecurityConfig {
         return http
                 // La API usa JWT en el encabezado, sin sesiones ni cookies de autenticación.
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(catalogCors()))
+                .cors(cors -> cors.configurationSource(storeCors()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
@@ -60,14 +61,17 @@ public class SecurityConfig {
                 .build();
     }
 
-    private UrlBasedCorsConfigurationSource catalogCors() {
+    private UrlBasedCorsConfigurationSource storeCors() {
         var config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173", "http://127.0.0.1:5173"));
-        config.setAllowedMethods(List.of(HttpMethod.GET.name()));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
+        config.setAllowedHeaders(List.of(HttpHeaders.AUTHORIZATION, HttpHeaders.CONTENT_TYPE));
 
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/products", config);
         source.registerCorsConfiguration("/products/*", config);
+        source.registerCorsConfiguration("/api/auth/login", config);
+        source.registerCorsConfiguration("/api/users/me", config);
         return source;
     }
 

@@ -3,6 +3,8 @@ package cl.duoc.streetwear_backend.services;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Sort;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import cl.duoc.streetwear_backend.dto.ProductRequest;
 import cl.duoc.streetwear_backend.models.Product;
@@ -18,7 +20,7 @@ public class ProductService {
     }
 
     public List<Product> findAll() {
-        return products.findAll();
+        return products.findAll(Sort.by("id"));
     }
 
     public Product findById(Long id) {
@@ -27,25 +29,26 @@ public class ProductService {
     }
 
     public Product create(ProductRequest request) {
-        synchronized (products) {
-            Product product = new Product();
-            apply(product, request);
-            return products.save(product);
-        }
+        Product product = new Product();
+        apply(product, request);
+        return products.save(product);
     }
 
+    @Transactional
     public Product update(Long id, ProductRequest request) {
-        synchronized (products) {
-            Product product = findById(id);
-            apply(product, request);
-            return products.save(product);
-        }
+        Product product = findForUpdate(id);
+        apply(product, request);
+        return product;
     }
 
+    @Transactional
     public void delete(Long id) {
-        synchronized (products) {
-            products.delete(findById(id));
-        }
+        products.delete(findForUpdate(id));
+    }
+
+    private Product findForUpdate(Long id) {
+        return products.findByIdForUpdate(id).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
     }
 
     private void apply(Product product, ProductRequest request) {
