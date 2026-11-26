@@ -9,7 +9,6 @@ Permite registrar usuarios, iniciar sesión, administrar productos y guardar com
 Desde la carpeta del repositorio:
 
 ```powershell
-cd streetwear-backend
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=demo"
 ```
 
@@ -46,7 +45,7 @@ JPA, H2 y Flyway tienen su inicio desactivado. Todavía no se conecta a una base
 
 ## Pruebas
 
-Desde la carpeta streetwear-backend:
+Desde la carpeta del repositorio:
 
 ```powershell
 .\mvnw.cmd test
