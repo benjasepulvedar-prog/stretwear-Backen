@@ -48,6 +48,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/contact").permitAll()
+                        .requestMatchers("/api/contact").hasRole("admin")
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products", "/products/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/products").hasRole("admin")
@@ -71,6 +73,7 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/products", config);
         source.registerCorsConfiguration("/products/*", config);
         source.registerCorsConfiguration("/api/auth/login", config);
+        source.registerCorsConfiguration("/api/contact", config);
         source.registerCorsConfiguration("/api/users/me", config);
         return source;
     }
